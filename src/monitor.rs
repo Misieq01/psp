@@ -35,6 +35,7 @@ pub struct PowerMonitor {
 
 impl PowerMonitor {
   pub fn new() -> Self {
+    println!("Power mointor created");
     let monitor = platform_impl::PowerMonitor::new();
     Self { monitor }
   }

@@ -41,6 +41,8 @@ impl PowerMonitor {
         return Err("Failed to register session notification");
       };
     }
+
+    println!("Power events listener started");
     Ok(())
   }
 }
@@ -52,9 +54,11 @@ impl Default for PowerMonitor {
 }
 
 unsafe fn create_power_events_listener() -> std::result::Result<HWND, &'static str> {
+  println!("Creating power events listener");
   let instance = GetModuleHandleA(None).unwrap_or_default();
 
   let window_class = s!("__psp_event_listener");
+  println!("Window class");
 
   let wnd_class = WNDCLASSA {
     hInstance: instance,
@@ -64,6 +68,7 @@ unsafe fn create_power_events_listener() -> std::result::Result<HWND, &'static s
   };
 
   RegisterClassA(&wnd_class);
+  println!("Window class registered");
 
   let hwnd = CreateWindowExA(
     WINDOW_EX_STYLE::default(),
@@ -79,11 +84,13 @@ unsafe fn create_power_events_listener() -> std::result::Result<HWND, &'static s
     instance,
     None,
   );
+  println!("Window created");
 
   if !IsWindow(hwnd).as_bool() {
     return Err("Unable to get valid mutable pointer for CreateWindowEx");
   }
 
+  println!("Power events listener created");
   Ok(hwnd)
 }
 
@@ -99,7 +106,9 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
           let sender = PowerEventChannel::sender();
           let _ = sender.send(PowerState::Suspend);
         }
-        _ => {}
+        _ => {
+          println!("WM_POWERBROADCAST event: {:?}", wparam.0 as u32);
+        }
       },
       WM_WTSSESSION_CHANGE => match wparam.0 as u32 {
         WTS_SESSION_LOCK => {
@@ -110,9 +119,13 @@ extern "system" fn wndproc(window: HWND, message: u32, wparam: WPARAM, lparam: L
           let sender = PowerEventChannel::sender();
           let _ = sender.send(PowerState::ScreenUnlocked);
         }
-        _ => {}
+        _ => {
+          println!("WM_WTSSESSION_CHANGE event: {:?}", wparam.0 as u32);
+        }
       },
-      _ => {}
+      _ => {
+        println!("Unknown event: {:?}", message);
+      }
     }
     DefWindowProcA(window, message, wparam, lparam)
   }
